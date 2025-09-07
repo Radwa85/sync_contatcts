@@ -1,0 +1,30 @@
+name: iOS Build and Test
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-test:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2
+
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '2.7'
+
+      - name: Install dependencies
+        run: |
+          bundle install
+
+      - name: Build iOS project
+        run: |
+          xcodebuild -workspace "SyncContact.xcworkspace" -scheme "SyncContact" -configuration "Release" build | xcpretty
+        env:
+          XCODE_WORKSPACE: "SyncContact.xcworkspace"
+          XCODE_SCHEME: "SyncContact"
