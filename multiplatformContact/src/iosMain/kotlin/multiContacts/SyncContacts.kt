@@ -3,6 +3,7 @@ package multiContacts
 import androidx.compose.runtime.Composable
 import platform.Contacts.*
 import platform.Foundation.*
+import kotlinx.cinterop.ExperimentalForeignApi
 
 @Composable
 actual fun syncAllContacts(onResult: (List<ContactInfo>) -> Unit): Launcher {
@@ -12,10 +13,11 @@ actual fun syncAllContacts(onResult: (List<ContactInfo>) -> Unit): Launcher {
     })
 }
 
+@OptIn(ExperimentalForeignApi::class)
 fun fetchContacts(): List<ContactInfo> {
     val contactsList = mutableListOf<ContactInfo>()
     val contactStore = CNContactStore()
-    
+
     try {
         val keysToFetch = listOf(
             CNContactGivenNameKey,
@@ -24,22 +26,23 @@ fun fetchContacts(): List<ContactInfo> {
             CNContactImageDataKey,
             CNContactThumbnailImageDataKey
         )
-        
-        val request = platform.Contacts.CNContactFetchRequest(keysToFetch)
-        contactStore.enumerateContactsWithRequest(request) { contact, _ ->
+
+        val request = CNContactFetchRequest(keysToFetch)
+
+        contactStore.enumerateContactsWithFetchRequest(request, null) { contact, _ ->
             val contactInfo = createContactInfo(contact)
             if (contactInfo != null) {
                 contactsList.add(contactInfo)
             }
-            true
         }
     } catch (e: Exception) {
         e.printStackTrace()
     }
-    
+
     return contactsList
 }
 
+@OptIn(ExperimentalForeignApi::class)
 private fun createContactInfo(contact: CNContact): ContactInfo? {
     val givenName = contact.givenName ?: ""
     val familyName = contact.familyName ?: ""
@@ -48,14 +51,16 @@ private fun createContactInfo(contact: CNContact): ContactInfo? {
     } else {
         "Unknown"
     }
-    
+
     val phoneNumbers = contact.phoneNumbers
     val phone = if (phoneNumbers.isNotEmpty()) {
-        phoneNumbers[0].value.stringValue ?: ""
+        val labeledValue = phoneNumbers[0]
+        val phoneNumber = labeledValue.value as? CNPhoneNumber
+        phoneNumber?.stringValue ?: ""
     } else {
         ""
     }
-    
+
     return ContactInfo(
         id = contact.identifier,
         name = fullName,
@@ -63,4 +68,3 @@ private fun createContactInfo(contact: CNContact): ContactInfo? {
         photoUri = null
     )
 }
-
